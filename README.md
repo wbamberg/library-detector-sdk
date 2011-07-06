@@ -1,14 +1,14 @@
-Now we've shipped the first stable release, one of our top priorities is to make it easier for people to port their add-ons to the n[ew Add-on SDK](https://addons.mozilla.org/en-US/developers/builder). I thought a small experiment would help me understand better what's involved in porting to the SDK, and highlight some of the rough edges which make it harder than it needs to be. [Louis-Rémi Babe](http://www.louisremi.com/) suggested porting [Paul Bakaus's Library Detector](https://addons.mozilla.org/de/firefox/addon/library-detector/), since it's really simple, but still a useful tool.
+Now we've shipped the first stable release, one of our top priorities is to make it easier for people to port their add-ons to the [new Add-on SDK](https://addons.mozilla.org/en-US/developers/builder). I thought a small experiment would help me understand better what's involved in porting to the SDK, and highlight some of the rough edges which make it harder than it needs to be. [Louis-Rémi Babe](http://www.louisremi.com/) suggested porting [Paul Bakaus's Library Detector](https://addons.mozilla.org/de/firefox/addon/library-detector/), since it's really simple, but still a useful tool.
 
 # What the Library Detector does #
 
 The Library Detector tells you which JavaScript frameworks the current web page is using. It does this by checking whether particular objects that those libraries add to the global window object are defined. For example, if `window.jQuery` is defined, then the page has loaded jQuery.
 
-For each library that it finds, the library detector adds an icon representing that library to the status bar. It adds a tooltip to each icon containing the library name and version.
+For each library that it finds, the library detector adds an icon representing that library to the status bar. It adds a tooltip to each icon, which contains the library name and version.
 
 # How the Library Detector works #
 
-All the work is done inside a single file ["librarydetector.xul"](http://code.google.com/p/librarydetector/source/browse/trunk/chrome/content/librarydetector.xul). This contains:
+All the work is done inside a single file, ["librarydetector.xul"](http://code.google.com/p/librarydetector/source/browse/trunk/chrome/content/librarydetector.xul). This contains:
 
 * a XUL modification to the browser chrome
 * a script
@@ -36,19 +36,19 @@ Finally, it listen to gBrowser's `TabSelect` event, to update the contents of th
 
 # Porting #
 
-The [widget](https://addons.mozilla.org/en-US/developers/docs/sdk/latest/packages/addon-kit/docs/widget.html) module is a natural fit for this add-on's UI. We'll want to specify its content using HTML, so we can supply an array of icons. The widget must be able to display different content for different windows, so we'll use the new [`WidgetView`](https://addons.mozilla.org/en-US/developers/docs/sdk/latest/packages/addon-kit/docs/widget.html#WidgetView) object.
+The [widget](https://addons.mozilla.org/en-US/developers/docs/sdk/latest/packages/addon-kit/docs/widget.html) module is a natural fit for this add-on's UI. We'll want to specify its content using HTML, so we can display an array of icons. The widget must be able to display different content for different windows, so we'll use the new [`WidgetView`](https://addons.mozilla.org/en-US/developers/docs/sdk/latest/packages/addon-kit/docs/widget.html#WidgetView) object.
 
-The test objects in the original script need access to the DOM window object, so we'll package those in a content script. In fact, they need access to the un-proxied DOM window, so they can see the objects added by libraries, so we'll need to use the experimental [unsafeWindow](https://wiki.mozilla.org/Labs/Jetpack/Release_Notes/1.0#Bug_601295:_Content_script_access_to_the_DOM_is_now_proxied) object. We'll use a [page-mod](https://addons.mozilla.org/en-US/developers/docs/sdk/latest/packages/addon-kit/docs/page-mod.html) to inject the content script into each page.
+The test objects in the original script need access to the DOM window object, so we'll package those in a content script. In fact, they need access to the un-proxied DOM window, so they can see the objects added by libraries, so we'll need to use the experimental [`unsafeWindow`](https://wiki.mozilla.org/Labs/Jetpack/Release_Notes/1.0#Bug_601295:_Content_script_access_to_the_DOM_is_now_proxied) object. We'll use a [page-mod](https://addons.mozilla.org/en-US/developers/docs/sdk/latest/packages/addon-kit/docs/page-mod.html) to inject the content script into each page.
 
-The content script is executed once for every `window.onload` event, so it will run multiple times when a single page containing multiple iframes is loaded. We just make a list of all the libraries we found in that window, and post the list to main.js using `postMessage`.
+The content script is executed once for every `window.onload` event, so it will run multiple times when a single page containing multiple iframes is loaded. We just make a list of all the libraries we found in that window, and post the list to main.js using `self.postMessage`.
 
 In main.js we handle the message by: fetching the tab corresponding to that worker using `worker.tab`, and adding the set of libraries to that tab's `libraries` property, avoiding duplicates.
 
-So we'll have:
+So to begin with we'll have 2 scripts, a main.js and a content script which we'll call "library-detector.js".
 
-1 - a main.js which:
+### main.js ###
 
-* creates a page-mod. The page-mod matches all URLs and runs scripts at `window.onload` (i.e. setting `contentScriptWhen: "end"`). It responds to messages from each of the page-mod's workers by updating a list of libraries which it will attach to the tab which corresponds to that worker.
+First, main.js creates a page-mod. The page-mod matches all URLs and runs scripts at `window.onload` (i.e. setting `contentScriptWhen: "end"`). It responds to messages from each of the page-mod's workers by updating a list of libraries which it will attach to the tab which corresponds to that worker.
 
 <pre><code>
 pageMod.PageMod({
@@ -73,9 +73,21 @@ pageMod.PageMod({
 });
 </code></pre>
 
-* creates a widget, and includes some code to build the HTML content for the widget, given the information sent from the page mod's workers
+Next we create a widget, and include some code to build the HTML content for the widget, given the information sent from the page mod's workers:
 
-* listens for tab events: on `activate` a tab should update the content of the WidgetView attached to the tab's window. On the `ready` event, reset the list: this deals with changes in location
+<pre><code>
+var widget = widgets.Widget({
+  id: "library-detector",
+  label: "Library Detector",
+  content: "<html></html>",
+});
+
+function buildWidgetViewContent(libraryList) {
+  // some very boring code that constructs and returns the HTML
+}
+</code></pre>
+
+Finally we listen for tab events: on `activate` a tab should update the content of the `WidgetView` attached to the tab's window:
 
 <pre><code>
 function updateWidgetView(tab) {
@@ -90,17 +102,23 @@ function updateWidgetView(tab) {
 tabs.on('activate', function(tab) {
   updateWidgetView(tab);
 });
+</code></pre>
 
+To deal with location changes, on the `ready` event, reset the list:
+
+<pre><code>
 tabs.on('ready', function(tab) {
   tab.libraries = [];
 });
 </code></pre>
 
-2 - a content script which keeps the existing script mostly intact, but:
+### library-detector.js ###
+
+This keeps the existing script mostly intact, but:
 
 * removes the `chrome://` URLs for icons, and the `switchLibraries` function, since we're now building the UI inside main.js
 
-* rewrites and simplifies `testLibraries`
+* rewrites and simplifies `testLibraries`:
 
 <pre><code>
 function testLibraries() {
@@ -140,7 +158,7 @@ for (var i = 0; i < elements.length; i++) {
 }
 </code></pre>
 
-In the event listener for this message I initially tried to display the panel: that preserves the original UI in which the library information is shown on mouseover. But if I do that, I can't anchor the panel to the widget and it appears in the middle of the browser window. So I have to use the panel that belongs to the widget and is shown on click. So now, in the event listener I'll just update the panel's content.
+In the event listener for this message I initially tried to display the panel by calling `panel.show`: that preserves the original UI in which the library information is shown on mouseover. But if I do that, I can't anchor the panel to the widget and it appears in the middle of the browser window. So I have to use the panel that belongs to the widget and is shown on click. So now, in the event listener I'll just update the panel's content.
 
 Finally, I needed another content script to update the panel's content with the library information:
 
@@ -177,3 +195,5 @@ It was mostly pretty smooth! Things I thought would have made it smoother:
 * Being able to anchor a panel to the widget would have given me more flexibility about the UI, although I think click-to-show is fine.
 
 * It seemed clunky to have to use a content script to update the panel's content.
+
+You can find the code [here](https://github.com/wbamberg/library-detector-sdk).
