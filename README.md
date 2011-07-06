@@ -79,7 +79,7 @@ Next we create a widget, and include some code to build the HTML content for the
 var widget = widgets.Widget({
   id: "library-detector",
   label: "Library Detector",
-  content: "<html></html>",
+  content: "&lt;html>&lt;/html>"
 });
 
 function buildWidgetViewContent(libraryList) {
