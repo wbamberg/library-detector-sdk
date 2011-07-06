@@ -1,4 +1,4 @@
-Now we've shipped the first stable release, one of our top priorities is to make it easier for people to port their add-ons to the new Add-on SDK. I thought a small experiment would help me understand better what's involved in porting to the SDK, and highlight some of the rough edges which make it harder than it needs to be. [Louis-Rémi Babe](http://www.louisremi.com/) suggested porting [Paul Bakaus's Library Detector](https://addons.mozilla.org/de/firefox/addon/library-detector/), since it's really simple, but still a useful tool.
+Now we've shipped the first stable release, one of our top priorities is to make it easier for people to port their add-ons to the n[ew Add-on SDK](https://addons.mozilla.org/en-US/developers/builder). I thought a small experiment would help me understand better what's involved in porting to the SDK, and highlight some of the rough edges which make it harder than it needs to be. [Louis-Rémi Babe](http://www.louisremi.com/) suggested porting [Paul Bakaus's Library Detector](https://addons.mozilla.org/de/firefox/addon/library-detector/), since it's really simple, but still a useful tool.
 
 # What the Library Detector does #
 
