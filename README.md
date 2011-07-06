@@ -168,7 +168,7 @@ This was a bit of a pain, and I found myself wishing for a way to set the panel'
 var widget = widgets.Widget({
   id: "library-detector",
   label: "Library Detector",
-  content: "<html></html>",
+  content: "&lt;html>&lt;/html>",
   contentScriptFile: data.url("widget.js"),
   panel: panel.Panel({
     width: 240,
