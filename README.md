@@ -37,11 +37,11 @@ The test objects in the original script need access to the DOM window object, so
 So at the high level, we'll have:
 
 1 - a main.js which:
-  - creates the page-mod to match all URLs and run scripts at window.onload (i.e. setting contentScriptWhen="end")
-  - creates a widget
-  - responds to messages from each of the page-mod's workers by updating a list of libraries which it will attach to the tab which corresponds to that worker
-  - listens for tab events: when a tab becomes active it should update the widgetview's content
-  - has some code to build the HTML content for the widget, given the information sent from the page mod's workers
+* creates the page-mod to match all URLs and run scripts at window.onload (i.e. setting contentScriptWhen="end")
+* creates a widget
+* responds to messages from each of the page-mod's workers by updating a list of libraries which it will attach to the tab which corresponds to that worker
+* listens for tab events: when a tab becomes active it should update the widgetview's content
+* has some code to build the HTML content for the widget, given the information sent from the page mod's workers
 
 2 - a content script which keeps the existing script mostly intact, but removes the chrome:// URLs for icons, and the `switchLibraries` function, since we're now building the UI inside main.js. Instead, we'll add the code to send the list of libraries back to main.js.
 
